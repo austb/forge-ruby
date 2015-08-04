@@ -1,4 +1,4 @@
-module Her
+module PuppetForge
 
   # This module provides convenience accessors for related resources. Related
   # classes will include {LazyAccessors}, allowing them to transparently fetch
@@ -11,9 +11,25 @@ module Her
     # @private
     def self.included(base)
       base.extend(self)
-      base.after_initialize { @_lazy = {} }
     end
 
+    def parent
+      if self.is_a? Class
+        class_name = self.name
+      else
+        class_name = self.class.name
+      end
+
+      # Split constants names and remove class name from end
+      arr = class_name.split("::")
+      arr.pop
+
+      mod = Object
+      arr.each do |str|
+        mod = mod.const_get(str)
+      end
+      mod
+    end
     # @!macro [attach] lazy
     #   @!method $1
     #     Returns a lazily-loaded $1 proxy. To eagerly load this $1, call
@@ -32,16 +48,18 @@ module Her
     # @param name [Symbol] the name of the lazy attribute
     # @param class_name [#to_s] the lazy relation's class name
     def lazy(name, class_name = name)
-      parent = self.parent
-      klass = (class_name.is_a?(Class) ? class_name : nil)
-      class_name = "#{class_name}".singularize.classify
+      class_name = "#{class_name}"
 
       define_method(name) do
+        @_lazy ||= {}
+
         @_lazy[name] ||= begin
-          klass ||= parent.const_get(class_name)
-          klass.send(:include, Her::LazyAccessors)
-          fetch unless has_attribute?(name)
-          value = attribute(name)
+
+          klass = parent.const_get(class_name)
+
+          klass.send(:include, PuppetForge::LazyAccessors)
+          fetch unless has_attribute?(name.to_s)
+          value = attributes[name.to_s]
           klass.new(value) if value
         end
       end
@@ -70,15 +88,15 @@ module Her
     # @param class_name [#to_s] the lazy relation's class name
     def lazy_collection(name, class_name = name)
       parent = self.parent
-      klass = (class_name.is_a?(Class) ? class_name : nil)
-      class_name = "#{class_name}".singularize.classify
 
       define_method(name) do
+        @_lazy ||= {}
+
         @_lazy[name] ||= begin
-          klass ||= parent.const_get(class_name)
-          klass.send(:include, Her::LazyAccessors)
-          fetch unless has_attribute?(name)
-          (attribute(name) || []).map { |x| klass.new(x) }
+          klass = parent.const_get(class_name)
+          klass.send(:include, PuppetForge::LazyAccessors)
+          fetch unless has_attribute?(name.to_s)
+          (attribute(name.to_s) || []).map { |x| klass.new(x) }
         end
       end
     end

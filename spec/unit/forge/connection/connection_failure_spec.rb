@@ -7,7 +7,7 @@ describe PuppetForge::Connection::ConnectionFailure do
       builder.use(:connection_failure)
 
       builder.adapter :test do |stub|
-        stub.get('/connectfail') { raise Faraday::ConnectionFailed.new(SocketError.new("getaddrinfo: Name or service not known"), :hi) }
+        stub.get('/connectfail') { raise Faraday::ConnectionFailed.new(Faraday::Adapter::Test::NetHttp::SocketError.new("getaddrinfo: Name or service not known"), :hi) }
       end
     end
   end
